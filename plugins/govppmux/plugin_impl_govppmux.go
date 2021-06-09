@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os"
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -246,8 +247,9 @@ func (p *Plugin) hackForBugInGoVPPMessageCache(address string, useShm bool) erro
 func reRegisterMessage(x govppapi.Message) {
 	typ := reflect.TypeOf(x)
 	namecrc := x.GetMessageName() + "_" + x.GetCrcString()
-	govppapi.GetRegisteredMessages()[namecrc] = x
-	govppapi.GetRegisteredMessageTypes()[typ] = namecrc
+	binapiPath := path.Dir(reflect.TypeOf(x).Elem().PkgPath())
+	govppapi.GetRegisteredMessages()[binapiPath][namecrc] = x
+	govppapi.GetRegisteredMessageTypes()[binapiPath][typ] = namecrc
 }
 
 // AfterInit reports status check.
