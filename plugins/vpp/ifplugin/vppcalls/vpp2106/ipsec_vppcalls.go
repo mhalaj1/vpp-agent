@@ -34,56 +34,92 @@ func (h *InterfaceVppHandler) DeleteIPSecTunnelInterface(ctx context.Context, if
 	return err
 }
 
-func (h *InterfaceVppHandler) tunnelIfAddDel(ctx context.Context, ifName string, ipSecLink *ifs.IPSecLink, isAdd bool) (uint32, error) {
-	localCryptoKey, err := hex.DecodeString(ipSecLink.LocalCryptoKey)
+// modified to use IpsecSadEntryAddDel instead of IpsecTunnelIfAddDel
+// comment tags:
+// -: present in tunnel, not present in sad (LocalXXX and RemoteXXX merged into XXX)
+// +: not present in tunnel, present in sad
+func (h *InterfaceVppHandler) tunnelIfAddDel(ctx context.Context, ipSecLink *ifs.IPSecLink, isAdd bool) (uint32, error) {
+	// ctx not used any more
+
+	cryptoKey, err := hex.DecodeString(ipSecLink.LocalCryptoKey)
+	// - cryptoKey, err := hex.DecodeString(ipSecLink.RemoteCryptoKey)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	remoteCryptoKey, err := hex.DecodeString(ipSecLink.RemoteCryptoKey)
+	integKey, err := hex.DecodeString(ipSecLink.LocalIntegKey)
+	// - integKey, err := hex.DecodeString(ipSecLink.RemoteIntegKey)
 	if err != nil {
-		return 0, err
-	}
-	localIntegKey, err := hex.DecodeString(ipSecLink.LocalIntegKey)
-	if err != nil {
-		return 0, err
-	}
-	remoteIntegKey, err := hex.DecodeString(ipSecLink.RemoteIntegKey)
-	if err != nil {
-		return 0, err
+		return err
 	}
 
-	localIP, err := IPToAddress(ipSecLink.LocalIp)
-	if err != nil {
-		return 0, err
+	var flags ipsec_types.IpsecSadFlags
+	if ipSecLink.Esn {
+		flags |= ipsec_types.IPSEC_API_SAD_FLAG_USE_ESN
 	}
-	remoteIP, err := IPToAddress(ipSecLink.RemoteIp)
-	if err != nil {
-		return 0, err
+	if ipSecLink.AntiReplay {
+		flags |= ipsec_types.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY
 	}
+	if ipSecLink.EnableUdpEncap {
+		flags |= ipsec_types.IPSEC_API_SAD_FLAG_UDP_ENCAP
+	}
+	var tunnelSrc, tunnelDst ip_types.Address
+	if ipSecLink.LocalIp != "" {
+		flags |= ipsec_types.IPSEC_API_SAD_FLAG_IS_TUNNEL
+		isIPv6, err := addrs.IsIPv6(ipSecLink.LocalIp)
+		if err != nil {
+			return err
+		}
+		if isIPv6 {
+			flags |= ipsec_types.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
+		}
+		tunnelSrc, err = IPToAddress(ipSecLink.LocalIp)
+		if err != nil {
+			return err
+		}
+		tunnelDst, err = IPToAddress(ipSecLink.RemoteIp)
+		if err != nil {
+			return err
+		}
+	}
+	const undefinedPort = ^uint16(0)
+	udpSrcPort := undefinedPort
+	// + if sa.TunnelSrcPort != 0 {
+	// + udpSrcPort = uint16(sa.TunnelSrcPort)
+	// + }
+	udpDstPort := undefinedPort
+	// + if sa.TunnelDstPort != 0 {
+	// + udpDstPort = uint16(sa.TunnelDstPort)
+	// + }
 
-	req := &vpp_ipsec.IpsecTunnelIfAddDel{
-		IsAdd:              isAdd,
-		Esn:                ipSecLink.Esn,
-		AntiReplay:         ipSecLink.AntiReplay,
-		LocalIP:            localIP,
-		RemoteIP:           remoteIP,
-		LocalSpi:           ipSecLink.LocalSpi,
-		RemoteSpi:          ipSecLink.RemoteSpi,
-		CryptoAlg:          uint8(ipSecLink.CryptoAlg),
-		LocalCryptoKey:     localCryptoKey,
-		LocalCryptoKeyLen:  uint8(len(localCryptoKey)),
-		RemoteCryptoKey:    remoteCryptoKey,
-		RemoteCryptoKeyLen: uint8(len(remoteCryptoKey)),
-		IntegAlg:           uint8(ipSecLink.IntegAlg),
-		LocalIntegKey:      localIntegKey,
-		LocalIntegKeyLen:   uint8(len(localIntegKey)),
-		RemoteIntegKey:     remoteIntegKey,
-		RemoteIntegKeyLen:  uint8(len(remoteIntegKey)),
-		UDPEncap:           ipSecLink.EnableUdpEncap,
+	req := &vpp_ipsec.IpsecSadEntryAddDel{
+		IsAdd: isAdd,
+		Entry: ipsec_types.IpsecSadEntry{
+			// + SadID:    sa.Index,
+			Spi: ipSecLink.LocalSpi,
+			// - Spi: ipSecLink.RemoteSpi,
+			// + Protocol: protocolToIpsecProto(sa.Protocol),
+			CryptoAlgorithm: ipsec_types.IpsecCryptoAlg(ipSecLink.CryptoAlg),
+			CryptoKey: ipsec_types.Key{
+				Data:   cryptoKey,
+				Length: uint8(len(cryptoKey)),
+			},
+			// + Salt:     sa.CryptoSalt,
+			IntegrityAlgorithm: ipsec_types.IpsecIntegAlg(ipSecLink.IntegAlg),
+			IntegrityKey: ipsec_types.Key{
+				Data:   integKey,
+				Length: uint8(len(integKey)),
+			},
+			TunnelSrc:  tunnelSrc,
+			TunnelDst:  tunnelDst,
+			Flags:      flags,
+			UDPSrcPort: udpSrcPort,
+			UDPDstPort: udpDstPort,
+		},
 	}
-	reply, err := h.ipsec.IpsecTunnelIfAddDel(ctx, req)
-	if err != nil {
-		return 0, err
+	reply := &vpp_ipsec.IpsecSadEntryAddDelReply{}
+
+	if err = h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
 	}
 
 	return uint32(reply.SwIfIndex), nil
