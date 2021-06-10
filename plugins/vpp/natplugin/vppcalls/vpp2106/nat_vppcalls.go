@@ -22,8 +22,8 @@ import (
 
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/interface_types"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/ip_types"
-	vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
-//	vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
+	vpp_nat_ed "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
+	vpp_nat_ei "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat_types"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls"
 	nat "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/nat"
@@ -43,8 +43,8 @@ const (
 	maxTagLen = 64
 )
 
-// holds a list of NAT44 flags set
-type nat44Flags struct {
+// holds a list of NAT44 ED flags set
+type nat44EdFlags struct {
 	isTwiceNat     bool
 	isSelfTwiceNat bool
 	isOut2In       bool
@@ -55,26 +55,92 @@ type nat44Flags struct {
 	isExtHostValid bool
 }
 
-// Enable NAT44 plugin and apply the given set of options.
-func (h *NatVppHandler) EnableNAT44Plugin(opts vppcalls.Nat44InitOpts) error {
-	var flags vpp_nat.Nat44ConfigFlags
-	if opts.EndpointDependent {
-		flags |= vpp_nat.NAT44_IS_ENDPOINT_DEPENDENT
-	}
+// holds a list of NAT44 EI flags set
+type nat44EiFlags struct {
+	eiStaticMappingOnly  bool
+	eiConnectionTracking bool
+	eiOut2InDpo          bool
+	eiAddrOnlyMapping    bool
+	eiIfInside           bool
+	eiIfOutside          bool
+	eiStaticMapping      bool
+}
+
+func (h *NatVppHandler) enableNAT44EdPlugin(opts vppcalls.Nat44InitOpts) error {
+	var flags vpp_nat_ed.Nat44ConfigFlags
 	if opts.ConnectionTracking {
-		flags |= vpp_nat.NAT44_IS_CONNECTION_TRACKING
+		flags |= vpp_nat_ed.NAT44_IS_CONNECTION_TRACKING
 	}
 	if opts.StaticMappingOnly {
-		flags |= vpp_nat.NAT44_IS_STATIC_MAPPING_ONLY
+		flags |= vpp_nat_ed.NAT44_IS_STATIC_MAPPING_ONLY
 	}
 	if opts.OutToInDPO {
-		flags |= vpp_nat.NAT44_IS_OUT2IN_DPO
+		flags |= vpp_nat_ed.NAT44_IS_OUT2IN_DPO
 	}
-	req := &vpp_nat.Nat44PluginEnableDisable{
+
+	req := &vpp_nat_ed.Nat44EdPluginEnableDisable{
 		Enable: true,
 		Flags:  flags,
 	}
-	reply := &vpp_nat.Nat44PluginEnableDisableReply{}
+	reply := &vpp_nat_ed.Nat44EdPluginEnableDisableReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *NatVppHandler) enableNAT44EiPlugin(opts vppcalls.Nat44InitOpts) error {
+	var flags vpp_nat_ei.Nat44EiConfigFlags
+	if opts.ConnectionTracking {
+		flags |= vpp_nat_ei.NAT44_EI_CONNECTION_TRACKING
+	}
+	if opts.StaticMappingOnly {
+		flags |= vpp_nat_ei.NAT44_EI_STATIC_MAPPING_ONLY
+	}
+	if opts.OutToInDPO {
+		flags |= vpp_nat_ei.NAT44_EI_OUT2IN_DPO
+	}
+
+	req := &vpp_nat_ei.Nat44EiPluginEnableDisable{
+		Enable: true,
+		Flags:  flags,
+	}
+	reply := &vpp_nat_ei.Nat44EiPluginEnableDisableReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Enable NAT44 plugin and apply the given set of options.
+func (h *NatVppHandler) EnableNAT44Plugin(opts vppcalls.Nat44InitOpts) error {
+	if opts.EndpointDependent {
+		h.ed = true
+		return h.enableNAT44EdPlugin(opts)
+	} else {
+		h.ed = false
+		return h.enableNAT44EdPlugin(opts)
+	}
+}
+
+func (h *NatVppHandler) disableNAT44EdPlugin() error {
+	req := &vpp_nat_ed.Nat44EdPluginEnableDisable{
+		Enable: false,
+	}
+	reply := &vpp_nat_ed.Nat44EdPluginEnableDisableReply{}
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *NatVppHandler) disableNAT44EiPlugin() error {
+	req := &vpp_nat_ei.Nat44EiPluginEnableDisable{
+		Enable: false,
+	}
+	reply := &vpp_nat_ei.Nat44EiPluginEnableDisableReply{}
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
 	}
@@ -83,28 +149,46 @@ func (h *NatVppHandler) EnableNAT44Plugin(opts vppcalls.Nat44InitOpts) error {
 
 // DisableNAT44Plugin disables NAT44 plugin.
 func (h *NatVppHandler) DisableNAT44Plugin() error {
-	req := &vpp_nat.Nat44PluginEnableDisable{
-		Enable: false,
+	if h.ed {
+		return h.disableNAT44EdPlugin()
+	} else {
+		return h.disableNAT44EiPlugin()
 	}
-	reply := &vpp_nat.Nat44PluginEnableDisableReply{}
+}
+
+func (h *NatVppHandler) setNat44EdForwarding(enableFwd bool) error {
+	req := &vpp_nat_ed.Nat44ForwardingEnableDisable{
+		Enable: enableFwd,
+	}
+	reply := &vpp_nat_ed.Nat44ForwardingEnableDisableReply{}
+
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (h *NatVppHandler) setNat44EiForwarding(enableFwd bool) error {
+	req := &vpp_nat_ei.Nat44EiForwardingEnableDisable{
+		Enable: enableFwd,
+	}
+	reply := &vpp_nat_ei.Nat44EiForwardingEnableDisableReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // SetNat44Forwarding configures NAT44 forwarding.
 func (h *NatVppHandler) SetNat44Forwarding(enableFwd bool) error {
-	req := &vpp_nat.Nat44ForwardingEnableDisable{
-		Enable: enableFwd,
+	if h.ed {
+		return h.setNat44EdForwarding(enableFwd)
+	} else {
+		return h.setNat44EiForwarding(enableFwd)
 	}
-	reply := &vpp_nat.Nat44ForwardingEnableDisableReply{}
-
-	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // EnableNat44Interface enables NAT44 feature for provided interface.
@@ -175,20 +259,91 @@ func (h *NatVppHandler) DelNat44StaticMapping(mapping *nat.DNat44_StaticMapping,
 	return h.handleNat44StaticMappingLb(mapping, dnatLabel, false)
 }
 
-// Calls VPP binary API to set/unset interface NAT44 feature.
-func (h *NatVppHandler) handleNat44Interface(iface string, isInside, isAdd bool) error {
+func (h *NatVppHandler) handleNatEd44Interface(iface string, isInside, isAdd bool) error {
 	// get interface metadata
 	ifaceMeta, found := h.ifIndexes.LookupByName(iface)
 	if !found {
 		return errors.New("failed to get interface metadata")
 	}
 
-	req := &vpp_nat.Nat44InterfaceAddDelFeature{
+	req := &vpp_nat_ed.Nat44InterfaceAddDelFeature{
 		SwIfIndex: interface_types.InterfaceIndex(ifaceMeta.SwIfIndex),
-		Flags:     setNat44Flags(&nat44Flags{isInside: isInside}),
+		Flags:     setNat44EdFlags(&nat44EdFlags{isInside: isInside}),
 		IsAdd:     isAdd,
 	}
-	reply := &vpp_nat.Nat44InterfaceAddDelFeatureReply{}
+	reply := &vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *NatVppHandler) handleNat44EiInterface(iface string, isInside, isAdd bool) error {
+	// get interface metadata
+	ifaceMeta, found := h.ifIndexes.LookupByName(iface)
+	if !found {
+		return errors.New("failed to get interface metadata")
+	}
+
+	req := &vpp_nat_ei.Nat44EiInterfaceAddDelFeature{
+		SwIfIndex: interface_types.InterfaceIndex(ifaceMeta.SwIfIndex),
+		Flags:     setNat44EiFlags(&nat44EiFlags{eiIfInside: isInside}),
+		IsAdd:     isAdd,
+	}
+	reply := &vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Calls VPP binary API to set/unset interface NAT44 feature.
+func (h *NatVppHandler) handleNat44Interface(iface string, isInside, isAdd bool) error {
+	if h.ed {
+		return h.handleNatEd44Interface(iface, isInside, isAdd)
+	} else {
+		return h.handleNat44EiInterface(iface, isInside, isAdd)
+	}
+}
+
+func (h *NatVppHandler) handleNat44EdInterfaceOutputFeature(iface string, isInside, isAdd bool) error {
+	// get interface metadata
+	ifaceMeta, found := h.ifIndexes.LookupByName(iface)
+	if !found {
+		return errors.New("failed to get interface metadata")
+	}
+
+	req := &vpp_nat_ed.Nat44InterfaceAddDelOutputFeature{
+		SwIfIndex: interface_types.InterfaceIndex(ifaceMeta.SwIfIndex),
+		Flags:     setNat44EdFlags(&nat44EdFlags{isInside: isInside}),
+		IsAdd:     isAdd,
+	}
+	reply := &vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *NatVppHandler) handleNat44EiInterfaceOutputFeature(iface string, isInside, isAdd bool) error {
+	// get interface metadata
+	ifaceMeta, found := h.ifIndexes.LookupByName(iface)
+	if !found {
+		return errors.New("failed to get interface metadata")
+	}
+
+	req := &vpp_nat_ei.Nat44EiInterfaceAddDelFeature{
+		SwIfIndex: interface_types.InterfaceIndex(ifaceMeta.SwIfIndex),
+		Flags:     setNat44EiFlags(&nat44EiFlags{eiIfInside: isInside}),
+		IsAdd:     isAdd,
+	}
+	reply := &vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{}
 
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
@@ -199,28 +354,14 @@ func (h *NatVppHandler) handleNat44Interface(iface string, isInside, isAdd bool)
 
 // Calls VPP binary API to set/unset interface NAT44 output feature
 func (h *NatVppHandler) handleNat44InterfaceOutputFeature(iface string, isInside, isAdd bool) error {
-	// get interface metadata
-	ifaceMeta, found := h.ifIndexes.LookupByName(iface)
-	if !found {
-		return errors.New("failed to get interface metadata")
+	if h.ed {
+		return h.handleNat44EdInterfaceOutputFeature(iface, isInside, isAdd)
+	} else {
+		return h.handleNat44EiInterfaceOutputFeature(iface, isInside, isAdd)
 	}
-
-	req := &vpp_nat.Nat44InterfaceAddDelOutputFeature{
-		SwIfIndex: interface_types.InterfaceIndex(ifaceMeta.SwIfIndex),
-		Flags:     setNat44Flags(&nat44Flags{isInside: isInside}),
-		IsAdd:     isAdd,
-	}
-	reply := &vpp_nat.Nat44InterfaceAddDelOutputFeatureReply{}
-
-	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
-		return err
-	}
-
-	return nil
 }
 
-// Calls VPP binary API to add/remove addresses to/from the NAT44 pool.
-func (h *NatVppHandler) handleNat44AddressPool(vrf uint32, firstIP, lastIP string, twiceNat, isAdd bool) error {
+func (h *NatVppHandler) handleNat44EdAddressPool(vrf uint32, firstIP, lastIP string, twiceNat, isAdd bool) error {
 	firstAddr, err := ipTo4Address(firstIP)
 	if err != nil {
 		return errors.Errorf("unable to parse address %s from the NAT pool: %v", firstIP, err)
@@ -233,20 +374,57 @@ func (h *NatVppHandler) handleNat44AddressPool(vrf uint32, firstIP, lastIP strin
 		}
 	}
 
-	req := &vpp_nat.Nat44AddDelAddressRange{
+	req := &vpp_nat_ed.Nat44AddDelAddressRange{
 		FirstIPAddress: firstAddr,
 		LastIPAddress:  lastAddr,
 		VrfID:          vrf,
-		Flags:          setNat44Flags(&nat44Flags{isTwiceNat: twiceNat}),
+		Flags:          setNat44EdFlags(&nat44EdFlags{isTwiceNat: twiceNat}),
 		IsAdd:          isAdd,
 	}
-	reply := &vpp_nat.Nat44AddDelAddressRangeReply{}
+	reply := &vpp_nat_ed.Nat44AddDelAddressRangeReply{}
 
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (h *NatVppHandler) handleNat44EiAddressPool(vrf uint32, firstIP, lastIP string, twiceNat, isAdd bool) error {
+	firstAddr, err := ipTo4Address(firstIP)
+	if err != nil {
+		return errors.Errorf("unable to parse address %s from the NAT pool: %v", firstIP, err)
+	}
+	lastAddr := firstAddr
+	if lastIP != "" {
+		lastAddr, err = ipTo4Address(lastIP)
+		if err != nil {
+			return errors.Errorf("unable to parse address %s from the NAT pool: %v", lastIP, err)
+		}
+	}
+
+	req := &vpp_nat_ei.Nat44EiAddDelAddressRange{
+		FirstIPAddress: firstAddr,
+		LastIPAddress:  lastAddr,
+		VrfID:          vrf,
+		IsAdd:          isAdd,
+	}
+	reply := &vpp_nat_ei.Nat44EiAddDelAddressRangeReply{}
+
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Calls VPP binary API to add/remove addresses to/from the NAT44 pool.
+func (h *NatVppHandler) handleNat44AddressPool(vrf uint32, firstIP, lastIP string, twiceNat, isAdd bool) error {
+	if h.ed {
+		return h.handleNat44EdAddressPool(vrf, firstIP, lastIP, twiceNat, isAdd)
+	} else {
+		return h.handleNat44EiAddressPool(vrf, firstIP, lastIP, twiceNat, isAdd)
+	}
 }
 
 // Calls VPP binary API to setup NAT virtual reassembly
@@ -310,48 +488,73 @@ func (h *NatVppHandler) handleNat44StaticMapping(mapping *nat.DNat44_StaticMappi
 		addrOnly = true
 	}
 
-	req := &vpp_nat.Nat44AddDelStaticMappingV2{
-		Tag:               dnatLabel,
-		LocalIPAddress:    lcIPAddr,
-		ExternalIPAddress: exIPAddr,
-		Protocol:          h.protocolNBValueToNumber(mapping.Protocol),
-		ExternalSwIfIndex: ifIdx,
-		VrfID:             lcVrf,
-		Flags: setNat44Flags(&nat44Flags{
-			isTwiceNat:     mapping.TwiceNat == nat.DNat44_StaticMapping_ENABLED,
-			isSelfTwiceNat: mapping.TwiceNat == nat.DNat44_StaticMapping_SELF,
-			isOut2In:       true,
-			isAddrOnly:     addrOnly,
-		}),
-		IsAdd: isAdd,
-	}
-
-	if !addrOnly {
-		req.LocalPort = lcPort
-		req.ExternalPort = uint16(mapping.ExternalPort)
-	}
-
-	// Applying(if needed) the override of IP address picking from twice-NAT address pool
-	if mapping.TwiceNatPoolIp != "" {
-		req.MatchPool = true
-		req.PoolIPAddress, err = ipTo4Address(mapping.TwiceNatPoolIp)
-		if err != nil {
-			return errors.Errorf("cannot configure static mapping for DNAT %s: unable to parse "+
-				"twice-NAT pool IP %s: %v", dnatLabel, mapping.TwiceNatPoolIp, err)
+	if h.ed {
+		req := &vpp_nat_ed.Nat44AddDelStaticMappingV2{
+			Tag:               dnatLabel,
+			LocalIPAddress:    lcIPAddr,
+			ExternalIPAddress: exIPAddr,
+			Protocol:          h.protocolNBValueToNumber(mapping.Protocol),
+			ExternalSwIfIndex: ifIdx,
+			VrfID:             lcVrf,
+			Flags: setNat44EdFlags(&nat44EdFlags{
+				isTwiceNat:     mapping.TwiceNat == nat.DNat44_StaticMapping_ENABLED,
+				isSelfTwiceNat: mapping.TwiceNat == nat.DNat44_StaticMapping_SELF,
+				isOut2In:       true,
+				isAddrOnly:     addrOnly,
+			}),
+			IsAdd: isAdd,
 		}
-	}
 
-	reply := &vpp_nat.Nat44AddDelStaticMappingV2Reply{}
+		if !addrOnly {
+			req.LocalPort = lcPort
+			req.ExternalPort = uint16(mapping.ExternalPort)
+		}
 
-	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
-		return err
+		// Applying(if needed) the override of IP address picking from twice-NAT address pool
+		if mapping.TwiceNatPoolIp != "" {
+			req.MatchPool = true
+			req.PoolIPAddress, err = ipTo4Address(mapping.TwiceNatPoolIp)
+			if err != nil {
+				return errors.Errorf("cannot configure static mapping for DNAT %s: unable to parse "+
+					"twice-NAT pool IP %s: %v", dnatLabel, mapping.TwiceNatPoolIp, err)
+			}
+		}
+
+		reply := &vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{}
+
+		if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+			return err
+		}
+	} else {
+		req := &vpp_nat_ei.Nat44EiAddDelStaticMapping{
+			Tag:               dnatLabel,
+			LocalIPAddress:    lcIPAddr,
+			ExternalIPAddress: exIPAddr,
+			Protocol:          h.protocolNBValueToNumber(mapping.Protocol),
+			ExternalSwIfIndex: ifIdx,
+			VrfID:             lcVrf,
+			Flags: setNat44EiFlags(&nat44EiFlags{
+				eiAddrOnlyMapping: addrOnly,
+			}),
+			IsAdd: isAdd,
+		}
+
+		if !addrOnly {
+			req.LocalPort = lcPort
+			req.ExternalPort = uint16(mapping.ExternalPort)
+		}
+
+		reply := &vpp_nat_ei.Nat44EiAddDelStaticMappingReply{}
+
+		if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// Calls VPP binary API to add/remove NAT44 static mapping with load balancing.
-func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMapping, dnatLabel string, isAdd bool) error {
+func (h *NatVppHandler) handleNat44EdStaticMappingLb(mapping *nat.DNat44_StaticMapping, dnatLabel string, isAdd bool) error {
 	// check tag length limit
 	if err := checkTagLength(dnatLabel); err != nil {
 		return err
@@ -370,7 +573,7 @@ func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMap
 	}
 
 	// Transform local IP/Ports
-	var locals []vpp_nat.Nat44LbAddrPort
+	var locals []vpp_nat_ed.Nat44LbAddrPort
 	for _, local := range mapping.LocalIps {
 		if local.LocalPort == 0 {
 			return errors.Errorf("cannot set local IP/Port for DNAT mapping %s: port is missing",
@@ -383,7 +586,7 @@ func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMap
 				dnatLabel, local.LocalIp, err)
 		}
 
-		locals = append(locals, vpp_nat.Nat44LbAddrPort{
+		locals = append(locals, vpp_nat_ed.Nat44LbAddrPort{
 			Addr:        localIP,
 			Port:        uint16(local.LocalPort),
 			Probability: uint8(local.Probability),
@@ -391,14 +594,14 @@ func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMap
 		})
 	}
 
-	req := &vpp_nat.Nat44AddDelLbStaticMapping{
+	req := &vpp_nat_ed.Nat44AddDelLbStaticMapping{
 		Tag:    dnatLabel,
 		Locals: locals,
 		//LocalNum:     uint32(len(locals)), // should not be needed (will be set by struc)
 		ExternalAddr: exIPAddrByte,
 		ExternalPort: uint16(mapping.ExternalPort),
 		Protocol:     h.protocolNBValueToNumber(mapping.Protocol),
-		Flags: setNat44Flags(&nat44Flags{
+		Flags: setNat44EdFlags(&nat44EdFlags{
 			isTwiceNat:     mapping.TwiceNat == nat.DNat44_StaticMapping_ENABLED,
 			isSelfTwiceNat: mapping.TwiceNat == nat.DNat44_StaticMapping_SELF,
 			isOut2In:       true,
@@ -407,13 +610,23 @@ func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMap
 		Affinity: mapping.SessionAffinity,
 	}
 
-	reply := &vpp_nat.Nat44AddDelLbStaticMappingReply{}
+	reply := &vpp_nat_ed.Nat44AddDelLbStaticMappingReply{}
 
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// Calls VPP binary API to add/remove NAT44 static mapping with load balancing.
+func (h *NatVppHandler) handleNat44StaticMappingLb(mapping *nat.DNat44_StaticMapping, dnatLabel string, isAdd bool) error {
+	if h.ed {
+		return h.handleNat44EdStaticMappingLb(mapping, dnatLabel, isAdd)
+	} else {
+		// no static mapping with load balancing implemented for EI nat yet
+		return nil
+	}
 }
 
 // Calls VPP binary API to add/remove NAT44 identity mapping.
@@ -450,27 +663,46 @@ func (h *NatVppHandler) handleNat44IdentityMapping(mapping *nat.DNat44_IdentityM
 		addrOnly = true
 	}
 
-	req := &vpp_nat.Nat44AddDelIdentityMapping{
-		Tag:       dnatLabel,
-		Flags:     setNat44Flags(&nat44Flags{isAddrOnly: addrOnly}),
-		IPAddress: ipAddr,
-		Port:      uint16(mapping.Port),
-		Protocol:  h.protocolNBValueToNumber(mapping.Protocol),
-		SwIfIndex: ifIdx,
-		VrfID:     mapping.VrfId,
-		IsAdd:     isAdd,
-	}
+	if h.ed {
+		req := &vpp_nat_ed.Nat44AddDelIdentityMapping{
+			Tag:       dnatLabel,
+			Flags:     setNat44EdFlags(&nat44EdFlags{isAddrOnly: addrOnly}),
+			IPAddress: ipAddr,
+			Port:      uint16(mapping.Port),
+			Protocol:  h.protocolNBValueToNumber(mapping.Protocol),
+			SwIfIndex: ifIdx,
+			VrfID:     mapping.VrfId,
+			IsAdd:     isAdd,
+		}
 
-	reply := &vpp_nat.Nat44AddDelIdentityMappingReply{}
+		reply := &vpp_nat_ed.Nat44AddDelIdentityMappingReply{}
 
-	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
-		return err
+		if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+			return err
+		}
+	} else {
+		req := &vpp_nat_ei.Nat44EiAddDelIdentityMapping{
+			Tag:       dnatLabel,
+			Flags:     setNat44EiFlags(&nat44EiFlags{eiAddrOnlyMapping: addrOnly}),
+			IPAddress: ipAddr,
+			Port:      uint16(mapping.Port),
+			Protocol:  h.protocolNBValueToNumber(mapping.Protocol),
+			SwIfIndex: ifIdx,
+			VrfID:     mapping.VrfId,
+			IsAdd:     isAdd,
+		}
+
+		reply := &vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{}
+
+		if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func setNat44Flags(flags *nat44Flags) nat_types.NatConfigFlags {
+func setNat44EdFlags(flags *nat44EdFlags) nat_types.NatConfigFlags {
 	var flagsCfg nat_types.NatConfigFlags
 	if flags.isTwiceNat {
 		flagsCfg |= nat_types.NAT_IS_TWICE_NAT
@@ -495,6 +727,32 @@ func setNat44Flags(flags *nat44Flags) nat_types.NatConfigFlags {
 	}
 	if flags.isExtHostValid {
 		flagsCfg |= nat_types.NAT_IS_EXT_HOST_VALID
+	}
+	return flagsCfg
+}
+
+func setNat44EiFlags(flags *nat44EiFlags) vpp_nat_ei.Nat44EiConfigFlags {
+	var flagsCfg vpp_nat_ei.Nat44EiConfigFlags
+	if flags.eiStaticMappingOnly {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_STATIC_MAPPING_ONLY
+	}
+	if flags.eiConnectionTracking {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_CONNECTION_TRACKING
+	}
+	if flags.eiOut2InDpo {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_OUT2IN_DPO
+	}
+	if flags.eiAddrOnlyMapping {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_ADDR_ONLY_MAPPING
+	}
+	if flags.eiIfInside {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_IF_INSIDE
+	}
+	if flags.eiIfOutside {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_IF_OUTSIDE
+	}
+	if flags.eiStaticMapping {
+		flagsCfg |= vpp_nat_ei.NAT44_EI_STATIC_MAPPING
 	}
 	return flagsCfg
 }

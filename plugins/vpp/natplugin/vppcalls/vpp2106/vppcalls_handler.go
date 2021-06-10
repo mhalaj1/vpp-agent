@@ -21,16 +21,16 @@ import (
 
 	"go.ligato.io/vpp-agent/v3/plugins/vpp"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106"
-	vpp_ip "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/ip"
-	vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
-//	vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
+	vpp_nat_ed "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
+	vpp_nat_ei "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/ifplugin/ifaceidx"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls"
 )
 
 func init() {
 	var msgs []govppapi.Message
-	msgs = append(msgs, vpp_nat.AllMessages()...)
+	msgs = append(msgs, vpp_nat_ed.AllMessages()...)
+	msgs = append(msgs, vpp_nat_ei.AllMessages()...)
 
 	vppcalls.AddNatHandlerVersion(vpp2106.Version, msgs, NewNatVppHandler)
 }
@@ -38,11 +38,10 @@ func init() {
 // NatVppHandler is accessor for NAT-related vppcalls methods.
 type NatVppHandler struct {
 	callsChannel govppapi.Channel
-	ip           vpp_ip.RPCService
-	nat          vpp_nat.RPCService
 	ifIndexes    ifaceidx.IfaceMetadataIndex
 	dhcpIndex    idxmap.NamedMapping
 	log          logging.Logger
+	ed           bool
 }
 
 // NewNatVppHandler creates new instance of NAT vppcalls handler.
@@ -52,8 +51,6 @@ func NewNatVppHandler(c vpp.Client,
 	callsChan, _ := c.NewAPIChannel()
 	return &NatVppHandler{
 		callsChannel: callsChan,
-		ip:           vpp_ip.NewServiceClient(c),
-		nat:          vpp_nat.NewServiceClient(c),
 		ifIndexes:    ifIndexes,
 		dhcpIndex:    dhcpIndex,
 		log:          log,

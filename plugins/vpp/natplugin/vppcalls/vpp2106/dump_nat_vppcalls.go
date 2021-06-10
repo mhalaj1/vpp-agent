@@ -22,8 +22,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
-	//vpp_nat "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
+	vpp_nat_ed "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ed"
+	vpp_nat_ei "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat44_ei"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/nat_types"
 	"go.ligato.io/vpp-agent/v3/plugins/vpp/ifplugin/ifaceidx"
 	ifs "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/interfaces"
@@ -55,15 +55,14 @@ func (h *NatVppHandler) DefaultNat44GlobalConfig() *nat.Nat44Global {
 	}
 }
 
-// Nat44GlobalConfigDump dumps global NAT44 config in NB format.
-func (h *NatVppHandler) Nat44GlobalConfigDump(dumpDeprecated bool) (cfg *nat.Nat44Global, err error) {
+func (h *NatVppHandler) nat44EiGlobalConfigDump(dumpDeprecated bool) (cfg *nat.Nat44Global, err error) {
 	cfg = &nat.Nat44Global{}
-	req := &vpp_nat.Nat44ShowRunningConfig{}
-	reply := &vpp_nat.Nat44ShowRunningConfigReply{}
+	req := &vpp_nat_ei.Nat44EiShowRunningConfig{}
+	reply := &vpp_nat_ei.Nat44EiShowRunningConfigReply{}
 	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return nil, err
 	}
-	cfg.EndpointIndependent = reply.Flags&vpp_nat.NAT44_IS_ENDPOINT_DEPENDENT == 0
+	cfg.EndpointIndependent = true
 	cfg.Forwarding = reply.ForwardingEnabled
 	cfg.VirtualReassembly, _, err = h.virtualReassemblyDump()
 	if err != nil {
@@ -80,6 +79,42 @@ func (h *NatVppHandler) Nat44GlobalConfigDump(dumpDeprecated bool) (cfg *nat.Nat
 		}
 	}
 	return
+}
+
+func (h *NatVppHandler) nat44EdGlobalConfigDump(dumpDeprecated bool) (cfg *nat.Nat44Global, err error) {
+	cfg = &nat.Nat44Global{}
+	req := &vpp_nat_ed.Nat44ShowRunningConfig{}
+	reply := &vpp_nat_ed.Nat44ShowRunningConfigReply{}
+	if err := h.callsChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+		return nil, err
+	}
+	cfg.EndpointIndependent = reply.Flags&vpp_nat_ed.NAT44_IS_ENDPOINT_DEPENDENT == 0
+	cfg.Forwarding = reply.ForwardingEnabled
+	cfg.VirtualReassembly, _, err = h.virtualReassemblyDump()
+	if err != nil {
+		return nil, err
+	}
+	if dumpDeprecated {
+		cfg.NatInterfaces, err = h.nat44InterfaceDump()
+		if err != nil {
+			return nil, err
+		}
+		cfg.AddressPool, err = h.nat44AddressDump()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return
+}
+
+// Nat44GlobalConfigDump dumps global NAT44 config in NB format.
+func (h *NatVppHandler) Nat44GlobalConfigDump(dumpDeprecated bool) (cfg *nat.Nat44Global, err error) {
+	if h.ed {
+		return h.nat44EdGlobalConfigDump(dumpDeprecated)
+	} else {
+		return h.nat44EiGlobalConfigDump(dumpDeprecated)
+	}
+
 }
 
 // DNat44Dump dumps all configured DNAT-44 configurations ordered by label.
@@ -127,14 +162,74 @@ func (h *NatVppHandler) DNat44Dump() (dnats []*nat.DNat44, err error) {
 	return dnats, nil
 }
 
-// Nat44InterfacesDump dumps NAT44 config of all NAT44-enabled interfaces.
-func (h *NatVppHandler) Nat44InterfacesDump() (natIfs []*nat.Nat44Interface, err error) {
+func (h *NatVppHandler) nat44EiInterfacesDump() (natIfs []*nat.Nat44Interface, err error) {
 
 	// dump NAT interfaces without output feature enabled
-	req1 := &vpp_nat.Nat44InterfaceDump{}
+	req1 := &vpp_nat_ei.Nat44EiInterfaceDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req1)
 	for {
-		msg := &vpp_nat.Nat44InterfaceDetails{}
+		msg := &vpp_nat_ei.Nat44EiInterfaceDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 interface: %v", err)
+		}
+		if stop {
+			break
+		}
+		ifName, _, found := h.ifIndexes.LookupBySwIfIndex(uint32(msg.SwIfIndex))
+		if !found {
+			h.log.Warnf("Interface with index %d not found in the mapping", msg.SwIfIndex)
+			continue
+		}
+		flags := getNat44EiFlags(msg.Flags)
+		natIf := &nat.Nat44Interface{
+			Name:          ifName,
+			NatInside:     flags.eiIfInside,
+			NatOutside:    flags.eiIfOutside,
+			OutputFeature: false,
+		}
+		natIfs = append(natIfs, natIf)
+	}
+
+	// dump interfaces with output feature enabled
+	req2 := &vpp_nat_ei.Nat44EiInterfaceOutputFeatureDump{}
+	reqContext = h.callsChannel.SendMultiRequest(req2)
+	for {
+		msg := &vpp_nat_ei.Nat44EiInterfaceOutputFeatureDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 interface output feature: %v", err)
+		}
+		if stop {
+			break
+		}
+		ifName, _, found := h.ifIndexes.LookupBySwIfIndex(uint32(msg.SwIfIndex))
+		if !found {
+			h.log.Warnf("Interface with index %d not found in the mapping", msg.SwIfIndex)
+			continue
+		}
+		flags := getNat44EiFlags(msg.Flags)
+		natIf := &nat.Nat44Interface{
+			Name:          ifName,
+			NatInside:     flags.eiIfInside,
+			NatOutside:    flags.eiIfOutside,
+			OutputFeature: true,
+		}
+		if !natIf.NatInside && !natIf.NatOutside {
+			natIf.NatOutside = true
+		}
+		natIfs = append(natIfs, natIf)
+	}
+	return
+}
+
+func (h *NatVppHandler) nat44EdInterfacesDump() (natIfs []*nat.Nat44Interface, err error) {
+
+	// dump NAT interfaces without output feature enabled
+	req1 := &vpp_nat_ed.Nat44InterfaceDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req1)
+	for {
+		msg := &vpp_nat_ed.Nat44InterfaceDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 interface: %v", err)
@@ -158,10 +253,10 @@ func (h *NatVppHandler) Nat44InterfacesDump() (natIfs []*nat.Nat44Interface, err
 	}
 
 	// dump interfaces with output feature enabled
-	req2 := &vpp_nat.Nat44InterfaceOutputFeatureDump{}
+	req2 := &vpp_nat_ed.Nat44InterfaceOutputFeatureDump{}
 	reqContext = h.callsChannel.SendMultiRequest(req2)
 	for {
-		msg := &vpp_nat.Nat44InterfaceOutputFeatureDetails{}
+		msg := &vpp_nat_ed.Nat44InterfaceOutputFeatureDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 interface output feature: %v", err)
@@ -189,16 +284,60 @@ func (h *NatVppHandler) Nat44InterfacesDump() (natIfs []*nat.Nat44Interface, err
 	return
 }
 
-// Nat44AddressPoolsDump dumps all configured NAT44 address pools.
-func (h *NatVppHandler) Nat44AddressPoolsDump() (natPools []*nat.Nat44AddressPool, err error) {
+// Nat44InterfacesDump dumps NAT44 config of all NAT44-enabled interfaces.
+func (h *NatVppHandler) Nat44InterfacesDump() (natIfs []*nat.Nat44Interface, err error) {
+	if h.ed {
+		return h.nat44EdInterfacesDump()
+	} else {
+		return h.nat44EiInterfacesDump()
+	}
+}
+
+func (h *NatVppHandler) nat44EiAddressPoolsDump() (natPools []*nat.Nat44AddressPool, err error) {
 	var curPool *nat.Nat44AddressPool
 	var lastIP net.IP
 
-	req := &vpp_nat.Nat44AddressDump{}
+	req := &vpp_nat_ei.Nat44EiAddressDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req)
 
 	for {
-		msg := &vpp_nat.Nat44AddressDetails{}
+		msg := &vpp_nat_ei.Nat44EiAddressDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 Address pool: %v", err)
+		}
+		if stop {
+			break
+		}
+		ip := net.IP(msg.IPAddress[:])
+		// merge subsequent IPs into a single pool
+		if curPool != nil && curPool.VrfId == msg.VrfID && ip.Equal(incIP(lastIP)) {
+			// update current pool
+			curPool.LastIp = ip.String()
+		} else {
+			// start a new pool
+			pool := &nat.Nat44AddressPool{
+				FirstIp:  ip.String(),
+				VrfId:    msg.VrfID,
+				TwiceNat: false,
+			}
+			curPool = pool
+			natPools = append(natPools, pool)
+		}
+		lastIP = ip
+	}
+	return
+}
+
+func (h *NatVppHandler) nat44EdAddressPoolsDump() (natPools []*nat.Nat44AddressPool, err error) {
+	var curPool *nat.Nat44AddressPool
+	var lastIP net.IP
+
+	req := &vpp_nat_ed.Nat44AddressDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req)
+
+	for {
+		msg := &vpp_nat_ed.Nat44AddressDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 Address pool: %v", err)
@@ -227,14 +366,45 @@ func (h *NatVppHandler) Nat44AddressPoolsDump() (natPools []*nat.Nat44AddressPoo
 	return
 }
 
-// nat44AddressDump returns NAT44 address pool configured in the VPP.
-// Deprecated. Functionality moved to Nat44AddressPoolsDump. Kept for backward compatibility.
-func (h *NatVppHandler) nat44AddressDump() (addressPool []*nat.Nat44Global_Address, err error) {
-	req := &vpp_nat.Nat44AddressDump{}
+// Nat44AddressPoolsDump dumps all configured NAT44 address pools.
+func (h *NatVppHandler) Nat44AddressPoolsDump() (natPools []*nat.Nat44AddressPool, err error) {
+	if h.ed {
+		return h.nat44EdAddressPoolsDump()
+	} else {
+		return h.nat44EiAddressPoolsDump()
+	}
+}
+
+func (h *NatVppHandler) nat44EiAddressDump() (addressPool []*nat.Nat44Global_Address, err error) {
+	req := &vpp_nat_ei.Nat44EiAddressDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req)
 
 	for {
-		msg := &vpp_nat.Nat44AddressDetails{}
+		msg := &vpp_nat_ei.Nat44EiAddressDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 Address pool: %v", err)
+		}
+		if stop {
+			break
+		}
+
+		addressPool = append(addressPool, &nat.Nat44Global_Address{
+			Address:  net.IP(msg.IPAddress[:]).String(),
+			VrfId:    msg.VrfID,
+			TwiceNat: false,
+		})
+	}
+
+	return
+}
+
+func (h *NatVppHandler) nat44EdAddressDump() (addressPool []*nat.Nat44Global_Address, err error) {
+	req := &vpp_nat_ed.Nat44AddressDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req)
+
+	for {
+		msg := &vpp_nat_ed.Nat44AddressDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 Address pool: %v", err)
@@ -251,6 +421,16 @@ func (h *NatVppHandler) nat44AddressDump() (addressPool []*nat.Nat44Global_Addre
 	}
 
 	return
+}
+
+// nat44AddressDump returns NAT44 address pool configured in the VPP.
+// Deprecated. Functionality moved to Nat44AddressPoolsDump. Kept for backward compatibility.
+func (h *NatVppHandler) nat44AddressDump() (addressPool []*nat.Nat44Global_Address, err error) {
+	if h.ed {
+		return h.nat44EdAddressDump()
+	} else {
+		return h.nat44EiAddressDump()
+	}
 }
 
 // virtualReassemblyDump returns current NAT virtual-reassembly configuration.
@@ -284,15 +464,103 @@ func (h *NatVppHandler) virtualReassemblyDump() (vrIPv4 *nat.VirtualReassembly, 
 	return*/
 }
 
-// nat44StaticMappingDump returns a map of NAT44 static mappings sorted by tags
-func (h *NatVppHandler) nat44StaticMappingDump() (entries stMappingMap, err error) {
+func (h *NatVppHandler) nat44EiStaticMappingDump() (entries stMappingMap, err error) {
 	entries = make(stMappingMap)
 	childMappings := make(stMappingMap)
-	req := &vpp_nat.Nat44StaticMappingDump{}
+	req := &vpp_nat_ei.Nat44EiStaticMappingDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req)
 
 	for {
-		msg := &vpp_nat.Nat44StaticMappingDetails{}
+		msg := &vpp_nat_ei.Nat44EiStaticMappingDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 static mapping: %v", err)
+		}
+		if stop {
+			break
+		}
+		lcIPAddress := net.IP(msg.LocalIPAddress[:]).String()
+		exIPAddress := net.IP(msg.ExternalIPAddress[:]).String()
+
+		// Parse tag (DNAT label)
+		tag := strings.TrimRight(msg.Tag, "\x00")
+		if _, hasTag := entries[tag]; !hasTag {
+			entries[tag] = []*nat.DNat44_StaticMapping{}
+			childMappings[tag] = []*nat.DNat44_StaticMapping{}
+		}
+
+		// resolve interface name
+		var (
+			found        bool
+			extIfaceName string
+			extIfaceMeta *ifaceidx.IfaceMetadata
+		)
+		if msg.ExternalSwIfIndex != NoInterface {
+			extIfaceName, extIfaceMeta, found = h.ifIndexes.LookupBySwIfIndex(uint32(msg.ExternalSwIfIndex))
+			if !found {
+				h.log.Warnf("Interface with index %v not found in the mapping", msg.ExternalSwIfIndex)
+				continue
+			}
+		}
+
+		// Add mapping into the map.
+		mapping := &nat.DNat44_StaticMapping{
+			ExternalInterface: extIfaceName,
+			ExternalIp:        exIPAddress,
+			ExternalPort:      uint32(msg.ExternalPort),
+			LocalIps: []*nat.DNat44_StaticMapping_LocalIP{ // single-value
+				{
+					VrfId:     msg.VrfID,
+					LocalIp:   lcIPAddress,
+					LocalPort: uint32(msg.LocalPort),
+				},
+			},
+			Protocol: h.protocolNumberToNBValue(msg.Protocol),
+			TwiceNat: h.getTwiceNatMode(false, false),
+			// if there is only one backend the affinity can not be set
+			SessionAffinity: 0,
+		}
+		entries[tag] = append(entries[tag], mapping)
+
+		if msg.ExternalSwIfIndex != NoInterface {
+			// collect auto-generated "child" mappings (interface replaced with every assigned IP address)
+			for _, ipAddr := range h.getInterfaceIPAddresses(extIfaceName, extIfaceMeta) {
+				childMapping := proto.Clone(mapping).(*nat.DNat44_StaticMapping)
+				childMapping.ExternalIp = ipAddr
+				childMapping.ExternalInterface = ""
+				childMappings[tag] = append(childMappings[tag], childMapping)
+			}
+		}
+	}
+
+	// do not dump auto-generated child mappings
+	for tag, mappings := range entries {
+		var filtered []*nat.DNat44_StaticMapping
+		for _, mapping := range mappings {
+			isChild := false
+			for _, child := range childMappings[tag] {
+				if proto.Equal(mapping, child) {
+					isChild = true
+					break
+				}
+			}
+			if !isChild {
+				filtered = append(filtered, mapping)
+			}
+		}
+		entries[tag] = filtered
+	}
+	return entries, nil
+}
+
+func (h *NatVppHandler) nat44EdStaticMappingDump() (entries stMappingMap, err error) {
+	entries = make(stMappingMap)
+	childMappings := make(stMappingMap)
+	req := &vpp_nat_ed.Nat44StaticMappingDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req)
+
+	for {
+		msg := &vpp_nat_ed.Nat44StaticMappingDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 static mapping: %v", err)
@@ -376,14 +644,26 @@ func (h *NatVppHandler) nat44StaticMappingDump() (entries stMappingMap, err erro
 	return entries, nil
 }
 
-// nat44StaticMappingLbDump returns a map of NAT44 static mapping with load balancing sorted by tags.
-func (h *NatVppHandler) nat44StaticMappingLbDump() (entries stMappingMap, err error) {
+// nat44StaticMappingDump returns a map of NAT44 static mappings sorted by tags
+func (h *NatVppHandler) nat44StaticMappingDump() (entries stMappingMap, err error) {
+	if h.ed {
+		return h.nat44EdStaticMappingDump()
+	} else {
+		return h.nat44EiStaticMappingDump()
+	}
+}
+
+func (h *NatVppHandler) nat44EiStaticMappingLbDump() (entries stMappingMap, err error) {
+	return make(stMappingMap), nil
+}
+
+func (h *NatVppHandler) nat44EdStaticMappingLbDump() (entries stMappingMap, err error) {
 	entries = make(stMappingMap)
-	req := &vpp_nat.Nat44LbStaticMappingDump{}
+	req := &vpp_nat_ed.Nat44LbStaticMappingDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req)
 
 	for {
-		msg := &vpp_nat.Nat44LbStaticMappingDetails{}
+		msg := &vpp_nat_ed.Nat44LbStaticMappingDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 lb-static mapping: %v", err)
@@ -427,15 +707,23 @@ func (h *NatVppHandler) nat44StaticMappingLbDump() (entries stMappingMap, err er
 	return entries, nil
 }
 
-// nat44IdentityMappingDump returns a map of NAT44 identity mappings sorted by tags.
-func (h *NatVppHandler) nat44IdentityMappingDump() (entries idMappingMap, err error) {
+// nat44StaticMappingLbDump returns a map of NAT44 static mapping with load balancing sorted by tags.
+func (h *NatVppHandler) nat44StaticMappingLbDump() (entries stMappingMap, err error) {
+	if h.ed {
+		return h.nat44EdStaticMappingLbDump()
+	} else {
+		return h.nat44EiStaticMappingLbDump()
+	}
+}
+
+func (h *NatVppHandler) nat44EiIdentityMappingDump() (entries idMappingMap, err error) {
 	entries = make(idMappingMap)
 	childMappings := make(idMappingMap)
-	req := &vpp_nat.Nat44IdentityMappingDump{}
+	req := &vpp_nat_ei.Nat44EiIdentityMappingDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req)
 
 	for {
-		msg := &vpp_nat.Nat44IdentityMappingDetails{}
+		msg := &vpp_nat_ei.Nat44EiIdentityMappingDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 identity mapping: %v", err)
@@ -507,16 +795,173 @@ func (h *NatVppHandler) nat44IdentityMappingDump() (entries idMappingMap, err er
 	return entries, nil
 }
 
-// nat44InterfaceDump dumps NAT44 interface features.
-// Deprecated. Functionality moved to Nat44Nat44InterfacesDump. Kept for backward compatibility.
-func (h *NatVppHandler) nat44InterfaceDump() (interfaces []*nat.Nat44Global_Interface, err error) {
+func (h *NatVppHandler) nat44EdIdentityMappingDump() (entries idMappingMap, err error) {
+	entries = make(idMappingMap)
+	childMappings := make(idMappingMap)
+	req := &vpp_nat_ed.Nat44IdentityMappingDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req)
+
+	for {
+		msg := &vpp_nat_ed.Nat44IdentityMappingDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 identity mapping: %v", err)
+		}
+		if stop {
+			break
+		}
+
+		// Parse tag (DNAT label)
+		tag := strings.TrimRight(msg.Tag, "\x00")
+		if _, hasTag := entries[tag]; !hasTag {
+			entries[tag] = []*nat.DNat44_IdentityMapping{}
+			childMappings[tag] = []*nat.DNat44_IdentityMapping{}
+		}
+
+		// resolve interface name
+		var (
+			found     bool
+			ifaceName string
+			ifaceMeta *ifaceidx.IfaceMetadata
+		)
+		if msg.SwIfIndex != NoInterface {
+			ifaceName, ifaceMeta, found = h.ifIndexes.LookupBySwIfIndex(uint32(msg.SwIfIndex))
+			if !found {
+				h.log.Warnf("Interface with index %v not found in the mapping", msg.SwIfIndex)
+				continue
+			}
+		}
+
+		// Add mapping into the map.
+		mapping := &nat.DNat44_IdentityMapping{
+			IpAddress: net.IP(msg.IPAddress[:]).String(),
+			VrfId:     msg.VrfID,
+			Interface: ifaceName,
+			Port:      uint32(msg.Port),
+			Protocol:  h.protocolNumberToNBValue(msg.Protocol),
+		}
+		entries[tag] = append(entries[tag], mapping)
+
+		if msg.SwIfIndex != NoInterface {
+			// collect auto-generated "child" mappings (interface replaced with every assigned IP address)
+			for _, ipAddr := range h.getInterfaceIPAddresses(ifaceName, ifaceMeta) {
+				childMapping := proto.Clone(mapping).(*nat.DNat44_IdentityMapping)
+				childMapping.IpAddress = ipAddr
+				childMapping.Interface = ""
+				childMappings[tag] = append(childMappings[tag], childMapping)
+			}
+		}
+	}
+
+	// do not dump auto-generated child mappings
+	for tag, mappings := range entries {
+		var filtered []*nat.DNat44_IdentityMapping
+		for _, mapping := range mappings {
+			isChild := false
+			for _, child := range childMappings[tag] {
+				if proto.Equal(mapping, child) {
+					isChild = true
+					break
+				}
+			}
+			if !isChild {
+				filtered = append(filtered, mapping)
+			}
+		}
+		entries[tag] = filtered
+	}
+
+	return entries, nil
+}
+
+// nat44IdentityMappingDump returns a map of NAT44 identity mappings sorted by tags.
+func (h *NatVppHandler) nat44IdentityMappingDump() (entries idMappingMap, err error) {
+	if h.ed {
+		return h.nat44EdIdentityMappingDump()
+	} else {
+		return h.nat44EiIdentityMappingDump()
+	}
+}
+
+func (h *NatVppHandler) nat44EiInterfaceDump() (interfaces []*nat.Nat44Global_Interface, err error) {
 
 	/* dump non-Output interfaces first */
-	req1 := &vpp_nat.Nat44InterfaceDump{}
+	req1 := &vpp_nat_ei.Nat44EiInterfaceDump{}
 	reqContext := h.callsChannel.SendMultiRequest(req1)
 
 	for {
-		msg := &vpp_nat.Nat44InterfaceDetails{}
+		msg := &vpp_nat_ei.Nat44EiInterfaceDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 interface: %v", err)
+		}
+		if stop {
+			break
+		}
+
+		// Find interface name
+		ifName, _, found := h.ifIndexes.LookupBySwIfIndex(uint32(msg.SwIfIndex))
+		if !found {
+			h.log.Warnf("Interface with index %d not found in the mapping", msg.SwIfIndex)
+			continue
+		}
+
+		flags := getNat44EiFlags(msg.Flags)
+
+		if flags.eiIfInside {
+			interfaces = append(interfaces, &nat.Nat44Global_Interface{
+				Name:     ifName,
+				IsInside: true,
+			})
+		} else {
+			interfaces = append(interfaces, &nat.Nat44Global_Interface{
+				Name:     ifName,
+				IsInside: false,
+			})
+		}
+	}
+
+	/* dump Output interfaces next */
+	req2 := &vpp_nat_ei.Nat44EiInterfaceOutputFeatureDump{}
+	reqContext = h.callsChannel.SendMultiRequest(req2)
+
+	for {
+		msg := &vpp_nat_ei.Nat44EiInterfaceOutputFeatureDetails{}
+		stop, err := reqContext.ReceiveReply(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to dump NAT44 interface output feature: %v", err)
+		}
+		if stop {
+			break
+		}
+
+		// Find interface name
+		ifName, _, found := h.ifIndexes.LookupBySwIfIndex(uint32(msg.SwIfIndex))
+		if !found {
+			h.log.Warnf("Interface with index %d not found in the mapping", msg.SwIfIndex)
+			continue
+		}
+
+		flags := getNat44EiFlags(msg.Flags)
+
+		interfaces = append(interfaces, &nat.Nat44Global_Interface{
+			Name:          ifName,
+			IsInside:      flags.eiIfInside,
+			OutputFeature: true,
+		})
+	}
+
+	return interfaces, nil
+}
+
+func (h *NatVppHandler) nat44EdInterfaceDump() (interfaces []*nat.Nat44Global_Interface, err error) {
+
+	/* dump non-Output interfaces first */
+	req1 := &vpp_nat_ed.Nat44InterfaceDump{}
+	reqContext := h.callsChannel.SendMultiRequest(req1)
+
+	for {
+		msg := &vpp_nat_ed.Nat44InterfaceDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 interface: %v", err)
@@ -548,11 +993,11 @@ func (h *NatVppHandler) nat44InterfaceDump() (interfaces []*nat.Nat44Global_Inte
 	}
 
 	/* dump Output interfaces next */
-	req2 := &vpp_nat.Nat44InterfaceOutputFeatureDump{}
+	req2 := &vpp_nat_ed.Nat44InterfaceOutputFeatureDump{}
 	reqContext = h.callsChannel.SendMultiRequest(req2)
 
 	for {
-		msg := &vpp_nat.Nat44InterfaceOutputFeatureDetails{}
+		msg := &vpp_nat_ed.Nat44InterfaceOutputFeatureDetails{}
 		stop, err := reqContext.ReceiveReply(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dump NAT44 interface output feature: %v", err)
@@ -578,6 +1023,16 @@ func (h *NatVppHandler) nat44InterfaceDump() (interfaces []*nat.Nat44Global_Inte
 	}
 
 	return interfaces, nil
+}
+
+// nat44InterfaceDump dumps NAT44 interface features.
+// Deprecated. Functionality moved to Nat44Nat44InterfacesDump. Kept for backward compatibility.
+func (h *NatVppHandler) nat44InterfaceDump() (interfaces []*nat.Nat44Global_Interface, err error) {
+	if h.ed {
+		return h.nat44EdInterfaceDump()
+	} else {
+		return h.nat44EiInterfaceDump()
+	}
 }
 
 func (h *NatVppHandler) getInterfaceIPAddresses(ifaceName string, ifaceMeta *ifaceidx.IfaceMetadata) (ipAddrs []string) {
@@ -647,8 +1102,8 @@ func getOrCreateDNAT(dnats dnatMap, label string) *nat.DNat44 {
 	return dnats[label]
 }
 
-func getNat44Flags(flags nat_types.NatConfigFlags) *nat44Flags {
-	natFlags := &nat44Flags{}
+func getNat44Flags(flags nat_types.NatConfigFlags) *nat44EdFlags {
+	natFlags := &nat44EdFlags{}
 	if flags&nat_types.NAT_IS_EXT_HOST_VALID != 0 {
 		natFlags.isExtHostValid = true
 	}
@@ -672,6 +1127,32 @@ func getNat44Flags(flags nat_types.NatConfigFlags) *nat44Flags {
 	}
 	if flags&nat_types.NAT_IS_TWICE_NAT != 0 {
 		natFlags.isTwiceNat = true
+	}
+	return natFlags
+}
+
+func getNat44EiFlags(flags vpp_nat_ei.Nat44EiConfigFlags) *nat44EiFlags {
+	natFlags := &nat44EiFlags{}
+	if flags&vpp_nat_ei.NAT44_EI_STATIC_MAPPING_ONLY != 0 {
+		natFlags.eiStaticMappingOnly = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_CONNECTION_TRACKING != 0 {
+		natFlags.eiConnectionTracking = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_OUT2IN_DPO != 0 {
+		natFlags.eiOut2InDpo = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_ADDR_ONLY_MAPPING != 0 {
+		natFlags.eiAddrOnlyMapping = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_IF_INSIDE != 0 {
+		natFlags.eiIfInside = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_IF_OUTSIDE != 0 {
+		natFlags.eiIfOutside = true
+	}
+	if flags&vpp_nat_ei.NAT44_EI_STATIC_MAPPING != 0 {
+		natFlags.eiStaticMapping = true
 	}
 	return natFlags
 }
