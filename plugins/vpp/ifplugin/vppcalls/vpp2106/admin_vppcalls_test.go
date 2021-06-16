@@ -15,6 +15,8 @@
 package vpp2106_test
 
 import (
+	"path"
+	"reflect"
 	"testing"
 
 	"git.fd.io/govpp.git/api"
@@ -179,13 +181,16 @@ func TestInterfaceRemoveTagRetval(t *testing.T) {
 	Expect(err).ToNot(BeNil())
 }
 
+// registeredMessageTypes = make(map[string]map[reflect.Type]string)
+
 func ifTestSetup(t *testing.T) (*vppmock.TestCtx, vppcalls.InterfaceVppAPI) {
 	// FIXME: this control pings below are hacked to avoid issues in tests
 	// that do not properly handle all replies, affecting tests that run after
 	// causing failures, because of unexpected ControlPingReply type from core
 	controlPingMsg := &vpe.ControlPingReply{}
-	api.GetRegisteredMessages()["control_ping_reply"] = controlPingMsg
-	api.GetRegisteredMessages()["control_ping_reply_f6b0b8ca"] = controlPingMsg
+	binapiPath := path.Dir(reflect.TypeOf(controlPingMsg).Elem().PkgPath())
+	api.GetRegisteredMessages()[binapiPath]["control_ping_reply"] = controlPingMsg
+	api.GetRegisteredMessages()[binapiPath]["control_ping_reply_f6b0b8ca"] = controlPingMsg
 	core.SetControlPingReply(controlPingMsg)
 	ctx := vppmock.SetupTestCtx(t)
 	core.SetControlPingReply(controlPingMsg)
