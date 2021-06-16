@@ -21,7 +21,7 @@ require (
 	github.com/goccy/go-graphviz v0.0.6
 	github.com/goccy/go-yaml v1.8.0
 	github.com/golang/protobuf v1.4.2
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.5
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -52,10 +52,11 @@ require (
 	github.com/yuin/gopher-lua v0.0.0-20190514113301-1cd887cd7036 // indirect
 	go.ligato.io/cn-infra/v2 v2.5.0-alpha.0.20200313154441-b0d4c1b11c73
 	go.uber.org/multierr v1.2.0 // indirect
-	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 	google.golang.org/genproto v0.0.0-20200601130524-0f60399e6634 // indirect
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.25.0
+	gotest.tools/gotestsum v1.6.4 // indirect
 )
