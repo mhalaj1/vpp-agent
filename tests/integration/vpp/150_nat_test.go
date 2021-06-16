@@ -33,6 +33,7 @@ const (
 	vpp2005 = "20.05"
 	vpp2009 = "20.09"
 	vpp2101 = "21.01"
+	vpp2106 = "21.06"
 )
 
 // TestNat44StaticMapping tests Create/Read/Delete operations for NAT44 static mappings
