@@ -14,114 +14,77 @@
 
 package vpp2106_test
 
-//func TestAddIPSecTunnelInterface(t *testing.T) {
-//	var ipv4Addr [16]byte
-//
-//	ctx, ifHandler := ifTestSetup(t)
-//	defer ctx.TeardownTestCtx()
-//	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecTunnelIfAddDelReply{
-//		SwIfIndex: 2,
-//	})
-//
-//	ipSecLink := &ifs.IPSecLink{
-//		Esn:             true,
-//		AntiReplay:      true,
-//		LocalIp:         "10.10.0.1",
-//		RemoteIp:        "10.10.0.2",
-//		LocalSpi:        1500,
-//		RemoteSpi:       2000,
-//		CryptoAlg:       9,
-//		LocalCryptoKey:  "4a506a794f574265564551694d653768",
-//		RemoteCryptoKey: "9a506a794f574265564551694d653456",
-//		IntegAlg:        4,
-//		LocalIntegKey:   "3a506a794f574265564551694d653769",
-//		RemoteIntegKey:  "8a506a794f574265564551694d653457",
-//		EnableUdpEncap:  true,
-//	}
-//	index, err := ifHandler.AddIPSecTunnelInterface(ctx.Context, "if1", ipSecLink)
-//	Expect(err).To(BeNil())
-//	Expect(index).To(Equal(uint32(2)))
-//
-//	vppMsg, ok := ctx.MockChannel.Msg.(*vpp_ipsec.IpsecTunnelIfAddDel)
-//	Expect(ok).To(BeTrue())
-//	Expect(vppMsg).ToNot(BeNil())
-//	localCryptoKey, err := hex.DecodeString("4a506a794f574265564551694d653768")
-//	Expect(err).To(BeNil())
-//	remoteCryptoKey, err := hex.DecodeString("9a506a794f574265564551694d653456")
-//	Expect(err).To(BeNil())
-//	localIntegKey, err := hex.DecodeString("3a506a794f574265564551694d653769")
-//	Expect(err).To(BeNil())
-//	remoteIntegKey, err := hex.DecodeString("8a506a794f574265564551694d653457")
-//	Expect(err).To(BeNil())
-//
-//	Expect(vppMsg.Esn).To(Equal(true))
-//	Expect(vppMsg.IsAdd).To(Equal(true))
-//	Expect(vppMsg.AntiReplay).To(Equal(true))
-//	Expect(vppMsg.LocalIP.Af).To(Equal(ip_types.ADDRESS_IP4))
-//	copy(ipv4Addr[:], net.ParseIP(ipSecLink.LocalIp)[12:])
-//	Expect(vppMsg.LocalIP.Un).To(BeEquivalentTo(ip_types.AddressUnion{XXX_UnionData: ipv4Addr}))
-//	Expect(vppMsg.LocalSpi).To(Equal(uint32(1500)))
-//	Expect(vppMsg.RemoteSpi).To(Equal(uint32(2000)))
-//	Expect(vppMsg.CryptoAlg).To(Equal(uint8(9)))
-//	Expect(vppMsg.LocalCryptoKey).To(BeEquivalentTo(localCryptoKey))
-//	Expect(vppMsg.LocalCryptoKeyLen).To(Equal(uint8(16)))
-//	Expect(vppMsg.RemoteCryptoKey).To(BeEquivalentTo(remoteCryptoKey))
-//	Expect(vppMsg.RemoteCryptoKeyLen).To(Equal(uint8(16)))
-//	Expect(vppMsg.IntegAlg).To(Equal(uint8(4)))
-//	Expect(vppMsg.LocalIntegKey).To(BeEquivalentTo(localIntegKey))
-//	Expect(vppMsg.LocalIntegKeyLen).To(Equal(uint8(16)))
-//	Expect(vppMsg.RemoteIntegKey).To(BeEquivalentTo(remoteIntegKey))
-//	Expect(vppMsg.RemoteIntegKeyLen).To(Equal(uint8(16)))
-//	Expect(vppMsg.UDPEncap).To(Equal(true))
-//}
-//
-//func TestAddIPSecTunnelInterfaceError(t *testing.T) {
-//	ctx, ifHandler := ifTestSetup(t)
-//	defer ctx.TeardownTestCtx()
-//	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecTunnelIfAddDelReply{
-//		SwIfIndex: 2,
-//		Retval:    9,
-//	})
-//
-//	index, err := ifHandler.AddIPSecTunnelInterface(ctx.Context, "if1", &ifs.IPSecLink{
-//		Esn:            true,
-//		LocalIp:        "10.10.0.1",
-//		LocalCryptoKey: "4a506a794f574265564551694d653768",
-//	})
-//	Expect(err).ToNot(BeNil())
-//	Expect(index).To(Equal(uint32(0)))
-//}
-//
-//func TestDeleteIPSecTunnelInterface(t *testing.T) {
-//	ctx, ifHandler := ifTestSetup(t)
-//	defer ctx.TeardownTestCtx()
-//	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecTunnelIfAddDelReply{
-//		SwIfIndex: 2,
-//	})
-//
-//	err := ifHandler.DeleteIPSecTunnelInterface(ctx.Context, "if1", 2, &ifs.IPSecLink{
-//		Esn:             true,
-//		LocalIp:         "10.10.0.1",
-//		RemoteIp:        "10.10.0.2",
-//		LocalCryptoKey:  "4a506a794f574265564551694d653768",
-//		RemoteCryptoKey: "9a506a794f574265564551694d653456",
-//	})
-//
-//	Expect(err).To(BeNil())
-//}
-//
-//func TestDeleteIPSecTunnelInterfaceError(t *testing.T) {
-//	ctx, ifHandler := ifTestSetup(t)
-//	defer ctx.TeardownTestCtx()
-//	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecTunnelIfAddDelReply{
-//		SwIfIndex: 2,
-//		Retval:    9,
-//	})
-//
-//	err := ifHandler.DeleteIPSecTunnelInterface(ctx.Context, "if1", 2, &ifs.IPSecLink{
-//		Esn:            true,
-//		LocalIp:        "10.10.0.1",
-//		LocalCryptoKey: "4a506a794f574265564551694d653768",
-//	})
-//	Expect(err).ToNot(BeNil())
-//}
+import (
+	"testing"
+
+	. "github.com/onsi/gomega"
+
+	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/interface_types"
+	vpp_ipsec "go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/ipsec"
+	"go.ligato.io/vpp-agent/v3/plugins/vpp/binapi/vpp2106/tunnel_types"
+	ifs "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/interfaces"
+)
+
+func TestAddIPSecTunnelInterface(t *testing.T) {
+	ctx, ifHandler := ifTestSetup(t)
+	defer ctx.TeardownTestCtx()
+	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecItfCreateReply{
+		SwIfIndex: 2,
+	})
+
+	ipSecLink := &ifs.IPSecLink{
+		TunnelMode: ifs.IPSecLink_POINT_TO_POINT,
+	}
+	index, err := ifHandler.AddIPSecTunnelInterface(ctx.Context, "if1", ipSecLink)
+	Expect(err).To(BeNil())
+	Expect(index).To(Equal(uint32(2)))
+
+	vppMsg, ok := ctx.MockChannel.Msg.(*vpp_ipsec.IpsecItfCreate)
+	Expect(ok).To(BeTrue())
+	Expect(vppMsg).ToNot(BeNil())
+
+	itf := vpp_ipsec.IpsecItf{
+		Mode: tunnel_types.TunnelMode(ifs.IPSecLink_POINT_TO_POINT),
+	}
+
+	Expect(vppMsg.Itf).To(Equal(itf))
+}
+
+func TestAddIPSecTunnelInterfaceError(t *testing.T) {
+	ctx, ifHandler := ifTestSetup(t)
+	defer ctx.TeardownTestCtx()
+	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecItfCreateReply{
+		SwIfIndex: 2,
+		Retval:    9,
+	})
+
+	index, err := ifHandler.AddIPSecTunnelInterface(ctx.Context, "if1", &ifs.IPSecLink{})
+	Expect(err).ToNot(BeNil())
+	Expect(index).To(Equal(uint32(0)))
+}
+
+func TestDeleteIPSecTunnelInterface(t *testing.T) {
+	ctx, ifHandler := ifTestSetup(t)
+	defer ctx.TeardownTestCtx()
+	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecItfDeleteReply{})
+
+	err := ifHandler.DeleteIPSecTunnelInterface(ctx.Context, "if1", 2, &ifs.IPSecLink{})
+	Expect(err).To(BeNil())
+
+	vppMsg, ok := ctx.MockChannel.Msg.(*vpp_ipsec.IpsecItfDelete)
+	Expect(ok).To(BeTrue())
+	Expect(vppMsg).ToNot(BeNil())
+
+	Expect(vppMsg.SwIfIndex).To(Equal(interface_types.InterfaceIndex(2)))
+}
+
+func TestDeleteIPSecTunnelInterfaceError(t *testing.T) {
+	ctx, ifHandler := ifTestSetup(t)
+	defer ctx.TeardownTestCtx()
+	ctx.MockVpp.MockReply(&vpp_ipsec.IpsecItfDeleteReply{
+		Retval: 9,
+	})
+
+	err := ifHandler.DeleteIPSecTunnelInterface(ctx.Context, "if1", 2, &ifs.IPSecLink{})
+	Expect(err).ToNot(BeNil())
+}
