@@ -16,8 +16,6 @@ package vppmock
 
 import (
 	"context"
-	"path"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -133,8 +131,7 @@ func (ctx *TestCtx) MockReplies(dataList []*HandleReplies) {
 		}
 
 		var err error
-		pkgPath := path.Dir(reflect.TypeOf(request).Elem().PkgPath())
-		replyMsg, id, ok := ctx.MockVpp.ReplyFor(pkgPath, request.MsgName)
+		replyMsg, id, ok := ctx.MockVpp.ReplyFor("", request.MsgName)
 		if ok {
 			reply, err = ctx.MockVpp.ReplyBytes(request, replyMsg)
 			Expect(err).To(BeNil())
