@@ -16,10 +16,11 @@ package vpp2106_test
 
 import (
 	"bytes"
-	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls"
-	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls/vpp2106"
 	"net"
 	"testing"
+
+	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls"
+	"go.ligato.io/vpp-agent/v3/plugins/vpp/natplugin/vppcalls/vpp2106"
 
 	. "github.com/onsi/gomega"
 
@@ -35,10 +36,12 @@ func TestSetNat44EdForwarding(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44ForwardingEnableDisableReply{})
-	err := natHandler.SetNat44Forwarding(true)
+	err = natHandler.SetNat44Forwarding(true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -53,10 +56,12 @@ func TestSetNat44EiForwarding(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiForwardingEnableDisableReply{})
-	err := natHandler.SetNat44Forwarding(true)
+	err = natHandler.SetNat44Forwarding(true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -71,10 +76,12 @@ func TestUnsetNat44EdForwarding(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44ForwardingEnableDisableReply{})
-	err := natHandler.SetNat44Forwarding(false)
+	err = natHandler.SetNat44Forwarding(false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -88,10 +95,12 @@ func TestUnsetNat44EiForwarding(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiForwardingEnableDisableReply{})
-	err := natHandler.SetNat44Forwarding(false)
+	err = natHandler.SetNat44Forwarding(false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -127,12 +136,14 @@ func TestSetNat44EdForwardingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44ForwardingEnableDisableReply{
 		Retval: 1,
 	})
-	err := natHandler.SetNat44Forwarding(true)
+	err = natHandler.SetNat44Forwarding(true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -141,12 +152,14 @@ func TestSetNat44EiForwardingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiForwardingEnableDisableReply{
 		Retval: 1,
 	})
-	err := natHandler.SetNat44Forwarding(true)
+	err = natHandler.SetNat44Forwarding(true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -155,12 +168,14 @@ func TestEnableNat44EdInterfaceAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if0", true, false)
+	err = natHandler.EnableNat44Interface("if0", true, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -176,12 +191,14 @@ func TestEnableNat44EiInterfaceAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if0", true, false)
+	err = natHandler.EnableNat44Interface("if0", true, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -197,12 +214,14 @@ func TestEnableNat44EdInterfaceAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -218,12 +237,14 @@ func TestEnableNat44EiInterfaceAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -239,13 +260,15 @@ func TestEnableNat44EdInterfaceError(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelAddressRangeReply{})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -254,13 +277,15 @@ func TestEnableNat44EiInterfaceError(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelAddressRangeReply{})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -269,14 +294,16 @@ func TestEnableNat44EdInterfaceRetval(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{
 		Retval: 1,
 	})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -285,14 +312,16 @@ func TestEnableNat44EiInterfaceRetval(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{
 		Retval: 1,
 	})
-	err := natHandler.EnableNat44Interface("if1", false, false)
+	err = natHandler.EnableNat44Interface("if1", false, false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -301,12 +330,14 @@ func TestDisableNat44EdInterfaceAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if0", true, false)
+	err = natHandler.DisableNat44Interface("if0", true, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -322,12 +353,14 @@ func TestDisableNat44EiInterfaceAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if0", true, false)
+	err = natHandler.DisableNat44Interface("if0", true, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -343,12 +376,14 @@ func TestDisableNat44EdInterfaceAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if1", false, false)
+	err = natHandler.DisableNat44Interface("if1", false, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -364,12 +399,14 @@ func TestDisableNat44EiInterfaceAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if1", false, false)
+	err = natHandler.DisableNat44Interface("if1", false, false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -385,12 +422,14 @@ func TestEnableNat44EdInterfaceOutputAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{})
-	err := natHandler.EnableNat44Interface("if0", true, true)
+	err = natHandler.EnableNat44Interface("if0", true, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -406,12 +445,14 @@ func TestEnableNat44EiInterfaceOutputAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if0", true, true)
+	err = natHandler.EnableNat44Interface("if0", true, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -427,12 +468,14 @@ func TestEnableNat44EdInterfaceOutputAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -448,12 +491,14 @@ func TestEnableNat44EiInterfaceOutputAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -469,13 +514,15 @@ func TestEnableNat44EdInterfaceOutputError(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -484,13 +531,15 @@ func TestEnableNat44InterfaceOutputError(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -499,14 +548,16 @@ func TestEnableNat44EdInterfaceOutputRetval(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{
 		Retval: 1,
 	})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -515,14 +566,16 @@ func TestEnableNat44EiInterfaceOutputRetval(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelOutputFeatureReply{
 		Retval: 1,
 	})
-	err := natHandler.EnableNat44Interface("if1", false, true)
+	err = natHandler.EnableNat44Interface("if1", false, true)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -531,12 +584,14 @@ func TestDisableNat44EdInterfaceOutputAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{})
-	err := natHandler.DisableNat44Interface("if0", true, true)
+	err = natHandler.DisableNat44Interface("if0", true, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -552,12 +607,14 @@ func TestDisableNat44EiInterfaceOutputAsInside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if0", true, true)
+	err = natHandler.DisableNat44Interface("if0", true, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -573,12 +630,14 @@ func TestDisableNat44EdInterfaceOutputAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44InterfaceAddDelOutputFeatureReply{})
-	err := natHandler.DisableNat44Interface("if1", false, true)
+	err = natHandler.DisableNat44Interface("if1", false, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -594,12 +653,14 @@ func TestDisableNat44EiInterfaceOutputAsOutside(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if1", &ifaceidx.IfaceMetadata{SwIfIndex: 2})
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelFeatureReply{})
-	err := natHandler.DisableNat44Interface("if1", false, true)
+	err = natHandler.DisableNat44Interface("if1", false, true)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -615,14 +676,16 @@ func TestAddNat44EdAddressPool(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr1 := net.ParseIP("10.0.0.1").To4()
 	addr2 := net.ParseIP("10.0.0.10").To4()
 
 	// first IP only
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelAddressRangeReply{})
-	err := natHandler.AddNat44AddressPool(0, addr1.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr1.String(), "", false)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	msg, ok := ctx.MockChannel.Msg.(*vpp_nat_ed.Nat44AddDelAddressRange)
@@ -651,14 +714,16 @@ func TestAddNat44EiAddressPool(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr1 := net.ParseIP("10.0.0.1").To4()
 	addr2 := net.ParseIP("10.0.0.10").To4()
 
 	// first IP only
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelAddressRangeReply{})
-	err := natHandler.AddNat44AddressPool(0, addr1.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr1.String(), "", false)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	msg, ok := ctx.MockChannel.Msg.(*vpp_nat_ei.Nat44EiAddDelAddressRange)
@@ -687,13 +752,15 @@ func TestAddNat44EdAddressPoolError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
-	err := natHandler.AddNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -702,13 +769,15 @@ func TestAddNat44EiAddressPoolError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
-	err := natHandler.AddNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -717,14 +786,16 @@ func TestAddNat44EdAddressPoolRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelAddressRangeReply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -733,14 +804,16 @@ func TestAddNat44EiAddressPoolRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelAddressRangeReply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.AddNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -749,12 +822,14 @@ func TestDelNat44EdAddressPool(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelAddressRangeReply{})
-	err := natHandler.DelNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.DelNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -771,12 +846,14 @@ func TestDelNat44EiAddressPool(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	addr := net.ParseIP("10.0.0.1").To4()
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelAddressRangeReply{})
-	err := natHandler.DelNat44AddressPool(0, addr.String(), "", false)
+	err = natHandler.DelNat44AddressPool(0, addr.String(), "", false)
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -838,7 +915,9 @@ func TestAddNat44EdStaticMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -862,7 +941,7 @@ func TestAddNat44EdStaticMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -884,7 +963,9 @@ func TestAddNat44EiStaticMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -908,7 +989,7 @@ func TestAddNat44EiStaticMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -929,7 +1010,9 @@ func TestAddNat44EdIdentityMappingWithInterface(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	localIP := net.ParseIP("10.0.0.1").To4()
 	externalIP := net.ParseIP("10.0.0.2").To4()
@@ -946,7 +1029,7 @@ func TestAddNat44EdIdentityMappingWithInterface(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -963,7 +1046,9 @@ func TestAddNat44EiIdentityMappingWithInterface(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	localIP := net.ParseIP("10.0.0.1").To4()
 	externalIP := net.ParseIP("10.0.0.2").To4()
@@ -980,7 +1065,7 @@ func TestAddNat44EiIdentityMappingWithInterface(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -998,11 +1083,13 @@ func TestAddNat44EdStaticMappingError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelLbStaticMappingReply{})
-	err := natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
+	err = natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1011,11 +1098,13 @@ func TestAddNat44EiStaticMappingError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiInterfaceAddDelOutputFeatureReply{})
-	err := natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
+	err = natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1024,12 +1113,14 @@ func TestAddNat44EdStaticMappingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
+	err = natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1038,12 +1129,14 @@ func TestAddNat44EiStaticMappingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
+	err = natHandler.AddNat44StaticMapping(&nat.DNat44_StaticMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1052,7 +1145,9 @@ func TestDelNat44EdStaticMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1075,7 +1170,7 @@ func TestDelNat44EdStaticMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1097,7 +1192,9 @@ func TestDelNat44EiStaticMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1119,7 +1216,7 @@ func TestDelNat44EiStaticMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1139,7 +1236,9 @@ func TestDelNat44EdStaticMappingAddrOnly(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	localIP := net.ParseIP("10.0.0.1").To4()
 	externalIP := net.ParseIP("10.0.0.2").To4()
@@ -1155,7 +1254,7 @@ func TestDelNat44EdStaticMappingAddrOnly(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1171,7 +1270,9 @@ func TestDelNat44EiStaticMappingAddrOnly(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	localIP := net.ParseIP("10.0.0.1").To4()
 	externalIP := net.ParseIP("10.0.0.2").To4()
@@ -1187,7 +1288,7 @@ func TestDelNat44EiStaticMappingAddrOnly(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1203,7 +1304,9 @@ func TestAddNat44EdStaticMappingLb(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	externalIP := net.ParseIP("10.0.0.1").To4()
 	localIP1 := net.ParseIP("10.0.0.2").To4()
@@ -1219,7 +1322,7 @@ func TestAddNat44EdStaticMappingLb(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelLbStaticMappingReply{})
-	err := natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1253,7 +1356,9 @@ func TestDelNat44EdStaticMappingLb(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	externalIP := net.ParseIP("10.0.0.1").To4()
 	localIP1 := net.ParseIP("10.0.0.2").To4()
@@ -1269,7 +1374,7 @@ func TestDelNat44EdStaticMappingLb(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelLbStaticMappingReply{})
-	err := natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
+	err = natHandler.DelNat44StaticMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1303,7 +1408,9 @@ func TestAddNat44EdIdentityMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1318,7 +1425,7 @@ func TestAddNat44EdIdentityMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1338,7 +1445,9 @@ func TestAddNat44EiIdentityMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1353,7 +1462,7 @@ func TestAddNat44EiIdentityMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1372,7 +1481,9 @@ func TestAddNat44EdIdentityMappingAddrOnly(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1384,7 +1495,7 @@ func TestAddNat44EdIdentityMappingAddrOnly(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1402,7 +1513,9 @@ func TestAddNat44EiIdentityMappingAddrOnly(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1414,7 +1527,7 @@ func TestAddNat44EiIdentityMappingAddrOnly(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 1")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1432,7 +1545,9 @@ func TestAddNat44EdIdentityMappingNoInterface(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	address := net.ParseIP("10.0.0.1").To4()
 
@@ -1444,7 +1559,7 @@ func TestAddNat44EdIdentityMappingNoInterface(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 2")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 2")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1461,7 +1576,9 @@ func TestAddNat44EiIdentityMappingNoInterface(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	address := net.ParseIP("10.0.0.1").To4()
 
@@ -1473,7 +1590,7 @@ func TestAddNat44EiIdentityMappingNoInterface(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(mapping, "DNAT 2")
+	err = natHandler.AddNat44IdentityMapping(mapping, "DNAT 2")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1490,11 +1607,13 @@ func TestAddNat44EdIdentityMappingError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelStaticMappingV2Reply{})
-	err := natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
+	err = natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1503,11 +1622,13 @@ func TestAddNat44EiIdentityMappingError(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// Incorrect reply object
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelStaticMappingReply{})
-	err := natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
+	err = natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1516,12 +1637,14 @@ func TestAddNat44EdIdentityMappingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
+	err = natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1530,12 +1653,14 @@ func TestAddNat44IdentityMappingRetval(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{
 		Retval: 1,
 	})
-	err := natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
+	err = natHandler.AddNat44IdentityMapping(&nat.DNat44_IdentityMapping{}, "")
 
 	Expect(err).Should(HaveOccurred())
 }
@@ -1544,7 +1669,9 @@ func TestDelNat44EdIdentityMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1558,7 +1685,7 @@ func TestDelNat44EdIdentityMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
-	err := natHandler.DelNat44IdentityMapping(mapping, "DNAT 2")
+	err = natHandler.DelNat44IdentityMapping(mapping, "DNAT 2")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1577,7 +1704,9 @@ func TestDelNat44EiIdentityMapping(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1591,7 +1720,7 @@ func TestDelNat44EiIdentityMapping(t *testing.T) {
 	}
 
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
-	err := natHandler.DelNat44IdentityMapping(mapping, "DNAT 2")
+	err = natHandler.DelNat44IdentityMapping(mapping, "DNAT 2")
 
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -1610,7 +1739,9 @@ func TestNat44EdMappingLongTag(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1653,7 +1784,7 @@ func TestNat44EdMappingLongTag(t *testing.T) {
 	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44AddDelIdentityMappingReply{})
 
 	// Successful scenario (to ensure there is no other error)
-	err := natHandler.AddNat44StaticMapping(mapping, normalTag)
+	err = natHandler.AddNat44StaticMapping(mapping, normalTag)
 	Expect(err).To(BeNil())
 	err = natHandler.AddNat44StaticMapping(lbMapping, normalTag)
 	Expect(err).To(BeNil())
@@ -1673,7 +1804,9 @@ func TestNat44EiMappingLongTag(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	swIfIndexes.Put("if0", &ifaceidx.IfaceMetadata{SwIfIndex: 1})
 
@@ -1706,7 +1839,7 @@ func TestNat44EiMappingLongTag(t *testing.T) {
 	ctx.MockVpp.MockReply(&vpp_nat_ei.Nat44EiAddDelIdentityMappingReply{})
 
 	// Successful scenario (to ensure there is no other error)
-	err := natHandler.AddNat44StaticMapping(mapping, normalTag)
+	err = natHandler.AddNat44StaticMapping(mapping, normalTag)
 	Expect(err).To(BeNil())
 	err = natHandler.AddNat44IdentityMapping(idMapping, normalTag)
 	Expect(err).To(BeNil())

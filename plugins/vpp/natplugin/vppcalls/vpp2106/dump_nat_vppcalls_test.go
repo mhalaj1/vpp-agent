@@ -42,7 +42,9 @@ import (
 //	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 //	defer ctx.TeardownTestCtx()
 //
-//	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+//	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+//	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+//	Expect(err).ShouldNot(HaveOccurred())
 //
 //	// forwarding
 //	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44ForwardingIsEnabledReply{
@@ -133,7 +135,9 @@ func TestNat44EdInterfacesDump(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// non-output interfaces
 	ctx.MockVpp.MockReply(
@@ -183,7 +187,9 @@ func TestNat44EiInterfacesDump(t *testing.T) {
 	ctx, natHandler, swIfIndexes, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// non-output interfaces
 	ctx.MockVpp.MockReply(
@@ -233,7 +239,9 @@ func TestNat44EdAddressPoolsDump(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// address pool
 	ctx.MockVpp.MockReply(
@@ -276,7 +284,9 @@ func TestNat44EiAddressPoolsDump(t *testing.T) {
 	ctx, natHandler, _, _ := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: false})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// address pool
 	ctx.MockVpp.MockReply(
@@ -317,7 +327,9 @@ func TestDNATDump(t *testing.T) {
 	ctx, natHandler, swIfIndexes, dhcpIndexes := natTestSetup(t)
 	defer ctx.TeardownTestCtx()
 
-	natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	ctx.MockVpp.MockReply(&vpp_nat_ed.Nat44EdPluginEnableDisableReply{})
+	err := natHandler.EnableNAT44Plugin(vppcalls.Nat44InitOpts{EndpointDependent: true})
+	Expect(err).ShouldNot(HaveOccurred())
 
 	// non-LB static mappings
 	ctx.MockVpp.MockReply(
