@@ -35,7 +35,7 @@ var (
 	memoryRe = regexp.MustCompile(
 		`Thread\s+(\d+)\s+(\w+).?\s+` +
 			`base 0x[0-9a-f]+, size ([\dkmg\.]+), (?:(?:locked|unmap-on-destroy)[,\s]+)*name '[-\w\s]*'\s+` +
-			`page stats: page-size ([\dkmgKMG\.]+), total ([\dkmg\.]+), mapped [\dkmg\.]+, not-mapped [\dkmg\.]+\s+` +
+			`page stats: page-size ([\dkmgKMG\.]+), total ([\dkmg\.]+), mapped [\dkmg\.]+, not-mapped [\dkmg\.]+(?:, unknown [\dkmg\.]+)?\s+` +
 			`(?:(?:\s+numa [\d]+: [\dkmg\.]+ pages, [\dkmg\.]+ bytes\s+)*\s+)*` +
 			`\s+total: ([\dkmgKMG\.]+), used: ([\dkmgKMG\.]+), free: ([\dkmgKMG\.]+), trimmable: ([\dkmgKMG\.]+)\s+` +
 			`free chunks (\d+)\s+free fastbin blks (\d+)\s+max total allocated\s+([\dkmgKMG\.]+)`,

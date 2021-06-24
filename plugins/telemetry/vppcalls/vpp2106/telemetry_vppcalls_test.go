@@ -345,6 +345,33 @@ func TestGetMemory(t *testing.T) {
 			},
 		},
 		{
+			name: "unknown",
+			reply: `Thread 0 vpp_main
+  base 0x7ff4bf55f000, size 1g, locked, unmap-on-destroy, name 'main heap'
+    page stats: page-size 4K, total 262144, mapped 14945, not-mapped 247174, unknown 25
+      numa 0: 14945 pages, 58.38m bytes
+    total: 1023.99M, used: 55.46M, free: 968.54M, trimmable: 968.53M
+      free chunks 303 free fastbin blks 0
+      max total allocated 1023.99M
+`,
+			threadCount: 1,
+			threadIdx:   0,
+			thread: vppcalls.MemoryThread{
+				ID:              0,
+				Name:            "vpp_main",
+				Size:            1e9,
+				Pages:           262144,
+				PageSize:        4000,
+				Used:            55.46e6,
+				Total:           1023.99e6,
+				Free:            968.54e6,
+				Trimmable:       968.53e6,
+				FreeChunks:      303,
+				FreeFastbinBlks: 0,
+				MaxTotalAlloc:   1023.99e6,
+			},
+		},
+		{
 			name: "3 workers",
 			reply: `Thread 0 vpp_main
   base 0x7f0f14823000, size 1g, locked, unmap-on-destroy, name 'main heap'
@@ -395,6 +422,36 @@ Thread 3 vpp_wk_2
 				MaxTotalAlloc:   1023.99e6,
 			},
 		},
+		// "19.08 update" test case tests for "page information not available" error.
+		// It contains reply from VPP version 20.09. The format of replies changed
+		// since VPP version 21.01, so the test case should be updated accordingly.
+		//
+		// {
+		// 	name: "19.08 update",
+		// //			reply: `Thread 0 vpp_main
+		// //  virtual memory start 0x7fc363c20000, size 1048640k, 262160 pages, page size 4k
+		// //    page information not available (errno 1)
+		// //  total: 1.00G, used: 56.78M, free: 967.29M, trimmable: 966.64M
+		// //    free chunks 337 free fastbin blks 0
+		// //    max total allocated 1.00G
+		// //`,
+		// 	threadCount: 1,
+		// 	threadIdx:   0,
+		// 	thread: vppcalls.MemoryThread{
+		// 		ID:              0,
+		// 		Name:            "vpp_main",
+		// 		Size:            1048.64e6,
+		// 		Pages:           262160,
+		// 		PageSize:        4000,
+		// 		Used:            56.78e6,
+		// 		Total:           1e9,
+		// 		Free:            967.29e6,
+		// 		Trimmable:       966.64e6,
+		// 		FreeChunks:      337,
+		// 		FreeFastbinBlks: 0,
+		// 		MaxTotalAlloc:   1e9,
+		// 	},
+		// },
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
